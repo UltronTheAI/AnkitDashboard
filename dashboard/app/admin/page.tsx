@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useMemo, useState } from "react";
+import { IconFileDown, IconSearch, IconShield } from "@/app/ui/icons";
 
 type ContentDoc = {
   id: string;
@@ -56,7 +57,10 @@ export default function AdminPage() {
                   : "h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-medium text-zinc-900 hover:bg-black/5 dark:border-white/15 dark:bg-black/30 dark:text-zinc-100 dark:hover:bg-white/10"
               }
             >
-              Content
+              <span className="inline-flex items-center gap-2">
+                <IconShield className="h-4 w-4" />
+                Content
+              </span>
             </button>
             <button
               type="button"
@@ -67,7 +71,10 @@ export default function AdminPage() {
                   : "h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-medium text-zinc-900 hover:bg-black/5 dark:border-white/15 dark:bg-black/30 dark:text-zinc-100 dark:hover:bg-white/10"
               }
             >
-              Forms
+              <span className="inline-flex items-center gap-2">
+                <IconSearch className="h-4 w-4" />
+                Forms
+              </span>
             </button>
           </div>
         </div>
@@ -457,7 +464,10 @@ function FormsAdmin() {
             onClick={downloadCsv}
             className="h-10 rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            Export CSV
+            <span className="inline-flex items-center gap-2">
+              <IconFileDown className="h-4 w-4" />
+              Export CSV
+            </span>
           </button>
           <button
             type="button"

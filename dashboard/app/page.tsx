@@ -3,11 +3,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { IconMail, IconPhone, IconSearch, IconUser } from "./ui/icons";
+import { COUNTRIES, type Country } from "./ui/countries";
 
 type SavedInfo = {
   firstName: string;
   lastName: string;
   phone: string;
+  countryCode?: string;
+  countryName?: string;
   email: string;
 };
 
@@ -19,6 +23,10 @@ type ContentListItem = {
 };
 
 const SAVED_INFO_KEY = "ankit_saved_info";
+const REQUEST_LIMIT_KEY = "ankit_daily_requests";
+const REQUEST_LIMIT = 5;
+const REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 
 function readSavedInfo(): SavedInfo | null {
   try {
@@ -37,6 +45,8 @@ function readSavedInfo(): SavedInfo | null {
       firstName: parsed.firstName,
       lastName: parsed.lastName,
       phone: parsed.phone,
+      countryCode: typeof parsed.countryCode === "string" ? parsed.countryCode : undefined,
+      countryName: typeof parsed.countryName === "string" ? parsed.countryName : undefined,
       email: parsed.email,
     };
   } catch {
@@ -44,17 +54,54 @@ function readSavedInfo(): SavedInfo | null {
   }
 }
 
+function loadRecentRequestTimestamps() {
+  try {
+    const raw = localStorage.getItem(REQUEST_LIMIT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const now = Date.now();
+    return parsed
+      .map((n) => (typeof n === "number" ? n : NaN))
+      .filter((n) => Number.isFinite(n))
+      .filter((n) => now - n < REQUEST_WINDOW_MS);
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentRequestTimestamps(timestamps: number[]) {
+  try {
+    localStorage.setItem(REQUEST_LIMIT_KEY, JSON.stringify(timestamps));
+  } catch {}
+}
+
+function formatCountdown(ms: number) {
+  const clamped = Math.max(0, ms);
+  const totalSeconds = Math.ceil(clamped / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+}
+
 export default function Home() {
   const [savedInfo, setSavedInfo] = useState<SavedInfo | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState<Country>(COUNTRIES[0]);
+  const [countryQuery, setCountryQuery] = useState("");
+  const [phoneLocal, setPhoneLocal] = useState("");
   const [email, setEmail] = useState("");
 
   const [query, setQuery] = useState("");
   const [loadingContent, setLoadingContent] = useState(false);
   const [content, setContent] = useState<ContentListItem[]>([]);
   const [contentId, setContentId] = useState<string>("");
+
+  const [recentRequests, setRecentRequests] = useState<number[]>([]);
+  const [cooldownText, setCooldownText] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState<number>(0);
 
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState<
@@ -67,12 +114,57 @@ export default function Home() {
     if (info) {
       setFirstName(info.firstName);
       setLastName(info.lastName);
-      setPhone(info.phone);
+      setPhoneLocal(info.phone);
       setEmail(info.email);
+      const match =
+        info.countryCode && info.countryName
+          ? COUNTRIES.find((c) => c.code === info.countryCode) ?? null
+          : null;
+      if (match) setCountry(match);
     }
+
+    const timestamps = loadRecentRequestTimestamps();
+    setRecentRequests(timestamps);
   }, []);
 
   const debouncedQuery = useMemo(() => query.trim(), [query]);
+
+  const canSubmit = useMemo(() => recentRequests.length < REQUEST_LIMIT, [recentRequests.length]);
+  const msUntilNext = useMemo(() => {
+    if (recentRequests.length < REQUEST_LIMIT) return 0;
+    const oldest = Math.min(...recentRequests);
+    return oldest + REQUEST_WINDOW_MS - nowMs;
+  }, [nowMs, recentRequests]);
+
+  useEffect(() => {
+    if (recentRequests.length < REQUEST_LIMIT) return;
+    setNowMs(Date.now());
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [recentRequests.length]);
+
+  useEffect(() => {
+    if (recentRequests.length < REQUEST_LIMIT) {
+      setCooldownText(null);
+      return;
+    }
+    const update = () => setCooldownText(formatCountdown(msUntilNext));
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
+  }, [msUntilNext, recentRequests.length]);
+
+  useEffect(() => {
+    if (recentRequests.length === 0) return;
+    const prune = () => {
+      const next = loadRecentRequestTimestamps();
+      setRecentRequests(next);
+      saveRecentRequestTimestamps(next);
+    };
+    if (msUntilNext <= 0) prune();
+    const t = setInterval(prune, 30_000);
+    return () => clearInterval(t);
+  }, [msUntilNext, recentRequests.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,8 +177,9 @@ export default function Home() {
         const data = (await res.json()) as { items: ContentListItem[] };
         if (!cancelled) {
           setContent(data.items ?? []);
-          if (data.items?.length && !contentId) {
-            setContentId(data.items[0].id);
+          const nextIds = new Set((data.items ?? []).map((i) => i.id));
+          if (!contentId || !nextIds.has(contentId)) {
+            setContentId(data.items?.[0]?.id ?? "");
           }
         }
       } catch {
@@ -102,9 +195,26 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery]);
 
+  const filteredCountries = useMemo(() => {
+    const q = countryQuery.trim().toLowerCase();
+    if (!q) return COUNTRIES;
+    return COUNTRIES.filter((c) => {
+      const hay = `${c.name} ${c.dial} ${c.code}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [countryQuery]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setStatus(null);
+
+    if (!canSubmit) {
+      setStatus({
+        type: "err",
+        message: `Daily limit reached (${REQUEST_LIMIT}). Try again in ${cooldownText ?? "a bit"}.`,
+      });
+      return;
+    }
     if (!contentId) {
       setStatus({ type: "err", message: "Please select one resource." });
       return;
@@ -112,6 +222,7 @@ export default function Home() {
 
     setSubmitting(true);
     try {
+      const phone = `${country.dial} ${phoneLocal}`.trim();
       const res = await fetch("/api/forms/submit", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -137,12 +248,20 @@ export default function Home() {
         type: "ok",
         message: "Submitted. Check your email for the resource.",
       });
+
+      const next = [...loadRecentRequestTimestamps(), Date.now()];
+      const now = Date.now();
+      const filtered = next.filter((t) => now - t < REQUEST_WINDOW_MS).slice(-50);
+      saveRecentRequestTimestamps(filtered);
+      setRecentRequests(filtered);
     } catch {
       setStatus({ type: "err", message: "Network error. Please try again." });
     } finally {
       setSubmitting(false);
     }
   }
+
+  const disableFields = submitting || !canSubmit;
 
   return (
     <div className="space-y-10">
@@ -179,41 +298,85 @@ export default function Home() {
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1 text-sm">
             <span className="text-zinc-700 dark:text-zinc-300">First name</span>
-            <input
-              required
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="h-11 rounded-xl border border-black/10 bg-white px-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
-            />
+            <div className="relative">
+              <IconUser className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+              <input
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                disabled={disableFields}
+                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+              />
+            </div>
           </label>
           <label className="grid gap-1 text-sm">
             <span className="text-zinc-700 dark:text-zinc-300">Last name</span>
-            <input
-              required
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="h-11 rounded-xl border border-black/10 bg-white px-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
-            />
+            <div className="relative">
+              <IconUser className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+              <input
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                disabled={disableFields}
+                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+              />
+            </div>
           </label>
           <label className="grid gap-1 text-sm">
             <span className="text-zinc-700 dark:text-zinc-300">Number</span>
-            <input
-              required
-              inputMode="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="h-11 rounded-xl border border-black/10 bg-white px-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="relative">
+                <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                <input
+                  value={countryQuery}
+                  onChange={(e) => setCountryQuery(e.target.value)}
+                  disabled={disableFields}
+                  placeholder="Search country…"
+                  className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+                />
+              </div>
+              <select
+                value={country.code}
+                onChange={(e) => {
+                  const next = COUNTRIES.find((c) => c.code === e.target.value);
+                  if (next) setCountry(next);
+                }}
+                disabled={disableFields}
+                className="h-11 w-full rounded-xl border border-black/15 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+              >
+                {filteredCountries.map((c) => (
+                  <option key={`${c.code}-${c.dial}`} value={c.code}>
+                    {c.name} ({c.dial})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="relative mt-2">
+              <IconPhone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+              <input
+                required
+                inputMode="tel"
+                value={phoneLocal}
+                onChange={(e) => setPhoneLocal(e.target.value)}
+                disabled={disableFields}
+                placeholder={`${country.dial} 9876543210`}
+                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+              />
+            </div>
           </label>
           <label className="grid gap-1 text-sm">
             <span className="text-zinc-700 dark:text-zinc-300">Email</span>
-            <input
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-11 rounded-xl border border-black/10 bg-white px-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
-            />
+            <div className="relative">
+              <IconMail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={disableFields}
+                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+              />
+            </div>
           </label>
         </div>
 
@@ -225,12 +388,16 @@ export default function Home() {
             </div>
           </div>
 
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search resources…"
-            className="h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
-          />
+          <div className="relative">
+            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              disabled={disableFields}
+              placeholder="Search resources by name or description…"
+              className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+            />
+          </div>
 
           <div className="grid gap-2">
             {loadingContent ? (
@@ -247,6 +414,7 @@ export default function Home() {
                     className="mt-1"
                     checked={contentId === item.id}
                     onChange={() => setContentId(item.id)}
+                    disabled={disableFields}
                     required
                   />
                   <div className="flex flex-1 items-start justify-between gap-3">
@@ -290,12 +458,22 @@ export default function Home() {
         ) : null}
 
         <button
-          disabled={submitting}
+          disabled={submitting || !canSubmit}
           type="submit"
           className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
-          {submitting ? "Submitting…" : "Submit & email resource"}
+          {!canSubmit
+            ? `Daily limit reached (${REQUEST_LIMIT})`
+            : submitting
+              ? "Submitting…"
+              : "Submit & email resource"}
         </button>
+
+        {!canSubmit ? (
+          <div className="rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+            You’ve hit today’s limit. Try again in {cooldownText ?? "…" }.
+          </div>
+        ) : null}
       </form>
 
       <section className="text-xs text-zinc-500 dark:text-zinc-400">

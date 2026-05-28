@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { IconShield } from "@/app/ui/icons";
 
 export default function AdminLoginPage() {
   const [nextPath, setNextPath] = useState("/admin");
@@ -44,11 +45,14 @@ export default function AdminLoginPage() {
       >
         <label className="grid gap-1 text-sm">
           <span className="text-zinc-700 dark:text-zinc-300">Access token</span>
-          <input
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            className="h-11 rounded-xl border border-black/10 bg-white px-3 text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
-          />
+          <div className="relative">
+            <IconShield className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <input
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              className="h-11 w-full rounded-xl border border-black/10 bg-white pl-10 pr-3 text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+            />
+          </div>
         </label>
         {error ? (
           <div className="rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">

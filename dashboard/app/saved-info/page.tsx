@@ -3,11 +3,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { COUNTRIES } from "../ui/countries";
+import { IconPhone, IconSearch } from "../ui/icons";
 
 type SavedInfo = {
   firstName: string;
   lastName: string;
   phone: string;
+  countryCode?: string;
+  countryName?: string;
   email: string;
 };
 
@@ -41,6 +45,8 @@ export default function SavedInfoPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("IN");
+  const [countryQuery, setCountryQuery] = useState("");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<string | null>(null);
 
@@ -51,11 +57,20 @@ export default function SavedInfoPage() {
     setLastName(info.lastName);
     setPhone(info.phone);
     setEmail(info.email);
+    if (typeof info.countryCode === "string") setCountryCode(info.countryCode);
   }, []);
 
   function save() {
     setStatus(null);
-    const payload: SavedInfo = { firstName, lastName, phone, email };
+    const selected = COUNTRIES.find((c) => c.code === countryCode) ?? COUNTRIES[0];
+    const payload: SavedInfo = {
+      firstName,
+      lastName,
+      phone,
+      email,
+      countryCode,
+      countryName: selected.name,
+    };
     try {
       localStorage.setItem(KEY, JSON.stringify(payload));
       setStatus("Saved to this browser.");
@@ -112,12 +127,41 @@ export default function SavedInfoPage() {
           </label>
           <label className="grid gap-1 text-sm">
             <span className="text-zinc-700 dark:text-zinc-300">Number</span>
-            <input
-              inputMode="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="h-11 rounded-xl border border-black/10 bg-white px-3 text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="relative">
+                <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                <input
+                  value={countryQuery}
+                  onChange={(e) => setCountryQuery(e.target.value)}
+                  placeholder="Search country…"
+                  className="h-11 w-full rounded-xl border border-black/10 bg-white pl-10 pr-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+                />
+              </div>
+              <select
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                className="h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+              >
+                {COUNTRIES.filter((c) => {
+                  const q = countryQuery.trim().toLowerCase();
+                  if (!q) return true;
+                  return `${c.name} ${c.dial} ${c.code}`.toLowerCase().includes(q);
+                }).map((c) => (
+                  <option key={`${c.code}-${c.dial}`} value={c.code}>
+                    {c.name} ({c.dial})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="relative mt-2">
+              <IconPhone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+              <input
+                inputMode="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="h-11 w-full rounded-xl border border-black/10 bg-white pl-10 pr-3 text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+              />
+            </div>
           </label>
           <label className="grid gap-1 text-sm">
             <span className="text-zinc-700 dark:text-zinc-300">Email</span>

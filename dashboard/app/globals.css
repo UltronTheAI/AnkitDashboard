@@ -29,3 +29,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+::selection {
+  background: color-mix(in oklab, var(--foreground) 18%, transparent);
+}
