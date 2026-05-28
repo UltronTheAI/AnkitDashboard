@@ -19,7 +19,12 @@ export async function DELETE(
     return NextResponse.json({ ok: false, error: "Invalid id." }, { status: 400 });
   }
 
-  const { form } = await getCollections();
+  let form;
+  try {
+    ({ form } = await getCollections());
+  } catch {
+    return NextResponse.json({ ok: false, error: "Database unavailable." }, { status: 503 });
+  }
   await form.deleteOne({ _id: oid });
   return NextResponse.json({ ok: true });
 }

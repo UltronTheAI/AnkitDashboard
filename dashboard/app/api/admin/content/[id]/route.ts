@@ -33,7 +33,12 @@ export async function PUT(
   if (typeof body.imageUrl === "string") patch.imageUrl = body.imageUrl.trim() || undefined;
   patch.updatedAt = new Date();
 
-  const { content } = await getCollections();
+  let content;
+  try {
+    ({ content } = await getCollections());
+  } catch {
+    return NextResponse.json({ ok: false, error: "Database unavailable." }, { status: 503 });
+  }
   await content.updateOne({ _id: oid }, { $set: patch });
   return NextResponse.json({ ok: true });
 }
@@ -54,7 +59,12 @@ export async function DELETE(
     return NextResponse.json({ ok: false, error: "Invalid id." }, { status: 400 });
   }
 
-  const { content } = await getCollections();
+  let content;
+  try {
+    ({ content } = await getCollections());
+  } catch {
+    return NextResponse.json({ ok: false, error: "Database unavailable." }, { status: 503 });
+  }
   await content.deleteOne({ _id: oid });
   return NextResponse.json({ ok: true });
 }

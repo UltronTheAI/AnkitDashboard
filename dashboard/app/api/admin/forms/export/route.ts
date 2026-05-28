@@ -13,7 +13,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { form } = await getCollections();
+  let form;
+  try {
+    ({ form } = await getCollections());
+  } catch {
+    return NextResponse.json({ error: "Database unavailable." }, { status: 503 });
+  }
   const docs = await form
     .find({}, { projection: { firstName: 1, lastName: 1, phone: 1, email: 1, contentName: 1, createdAt: 1 } })
     .sort({ createdAt: -1 })
@@ -45,4 +50,3 @@ export async function GET(req: NextRequest) {
     },
   });
 }
-

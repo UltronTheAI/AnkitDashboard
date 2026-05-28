@@ -7,7 +7,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { content } = await getCollections();
+  let content;
+  try {
+    ({ content } = await getCollections());
+  } catch {
+    return NextResponse.json({ error: "Database unavailable." }, { status: 503 });
+  }
   const items = await content
     .find({}, { projection: { name: 1, description: 1, link: 1, imageUrl: 1, createdAt: 1, updatedAt: 1 } })
     .sort({ createdAt: -1 })
@@ -51,7 +56,12 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date();
-  const { content } = await getCollections();
+  let content;
+  try {
+    ({ content } = await getCollections());
+  } catch {
+    return NextResponse.json({ ok: false, error: "Database unavailable." }, { status: 503 });
+  }
   await content.insertOne({
     name,
     description,

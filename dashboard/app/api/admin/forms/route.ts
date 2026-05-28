@@ -10,7 +10,12 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const limit = Math.min(Number(searchParams.get("limit") ?? "200") || 200, 500);
 
-  const { form } = await getCollections();
+  let form;
+  try {
+    ({ form } = await getCollections());
+  } catch {
+    return NextResponse.json({ error: "Database unavailable." }, { status: 503 });
+  }
   const docs = await form
     .find({}, { projection: { firstName: 1, lastName: 1, phone: 1, email: 1, contentName: 1, createdAt: 1 } })
     .sort({ createdAt: -1 })
@@ -29,4 +34,3 @@ export async function GET(req: NextRequest) {
     })),
   });
 }
-

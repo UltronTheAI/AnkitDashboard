@@ -46,7 +46,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Invalid resource." }, { status: 400 });
   }
 
-  const { content, form } = await getCollections();
+  let collections: Awaited<ReturnType<typeof getCollections>>;
+  try {
+    collections = await getCollections();
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Database unavailable." },
+      { status: 503 },
+    );
+  }
+  const { content, form } = collections;
 
   const resource = await content.findOne(
     { _id: oid },

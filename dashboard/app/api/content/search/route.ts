@@ -5,7 +5,15 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
 
-  const { content } = await getCollections();
+  let contentCollection: Awaited<ReturnType<typeof getCollections>>["content"];
+  try {
+    ({ content: contentCollection } = await getCollections());
+  } catch {
+    return NextResponse.json(
+      { items: [], error: "Database unavailable." },
+      { status: 503 },
+    );
+  }
 
   const limit = 20;
   const query =
@@ -13,7 +21,7 @@ export async function GET(req: NextRequest) {
       ? { $text: { $search: q } }
       : {};
 
-  const cursor = content
+  const cursor = contentCollection
     .find(query, {
       projection:
         q.length > 0
@@ -34,4 +42,3 @@ export async function GET(req: NextRequest) {
     })),
   });
 }
-
