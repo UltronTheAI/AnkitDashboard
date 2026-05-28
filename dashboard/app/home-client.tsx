@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { IconMail, IconPhone, IconSearch, IconUser } from "./ui/icons";
+import { IconMail, IconPhone, IconUser } from "./ui/icons";
 
 type SavedInfo = {
   firstName: string;
@@ -108,7 +108,6 @@ export default function HomeClient() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  const [query, setQuery] = useState("");
   const [loadingContent, setLoadingContent] = useState(false);
   const [content, setContent] = useState<ContentListItem[]>([]);
   const [contentId, setContentId] = useState<string>("");
@@ -135,8 +134,6 @@ export default function HomeClient() {
     const existingLockUntil = loadLockUntil();
     setLockUntil(existingLockUntil);
   }, []);
-
-  const debouncedQuery = useMemo(() => query.trim(), [query]);
 
   const isLocked = useMemo(() => {
     if (lockUntil === null) return false;
@@ -198,9 +195,7 @@ export default function HomeClient() {
     const t = setTimeout(async () => {
       setLoadingContent(true);
       try {
-        const res = await fetch(
-          `/api/content/search?q=${encodeURIComponent(debouncedQuery)}`,
-        );
+        const res = await fetch(`/api/content/search?q=`);
         const data = (await res.json()) as { items: ContentListItem[] };
         if (!cancelled) {
           setContent(data.items ?? []);
@@ -220,7 +215,7 @@ export default function HomeClient() {
       clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQuery]);
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -397,19 +392,8 @@ export default function HomeClient() {
           <div className="flex flex-col gap-1">
             <div className="text-sm font-medium">Choose one resource</div>
             <div className="text-xs text-zinc-600 dark:text-zinc-400">
-              Search by name/description. Links are hidden until emailed.
+              Links are hidden until emailed.
             </div>
-          </div>
-
-          <div className="relative">
-            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              disabled={disableFields}
-              placeholder="Search resources by name or description…"
-              className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100 dark:focus:bg-black/40"
-            />
           </div>
 
           <div className="grid gap-2">
