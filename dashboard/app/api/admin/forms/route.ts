@@ -8,7 +8,9 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const limit = Math.min(Number(searchParams.get("limit") ?? "200") || 200, 500);
+  const pageSize = Math.min(Math.max(Number(searchParams.get("pageSize") ?? "5") || 5, 1), 50);
+  const page = Math.max(Number(searchParams.get("page") ?? "1") || 1, 1);
+  const skip = (page - 1) * pageSize;
 
   let form;
   try {
@@ -16,13 +18,33 @@ export async function GET(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Database unavailable." }, { status: 503 });
   }
-  const docs = await form
-    .find({}, { projection: { firstName: 1, lastName: 1, phone: 1, email: 1, contentName: 1, createdAt: 1 } })
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .toArray();
+
+  const [total, docs] = await Promise.all([
+    form.countDocuments({}),
+    form
+      .find(
+        {},
+        {
+          projection: {
+            firstName: 1,
+            lastName: 1,
+            phone: 1,
+            email: 1,
+            contentName: 1,
+            createdAt: 1,
+          },
+        },
+      )
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageSize)
+      .toArray(),
+  ]);
 
   return NextResponse.json({
+    page,
+    pageSize,
+    total,
     items: docs.map((d) => ({
       id: d._id.toString(),
       firstName: d.firstName,

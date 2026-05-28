@@ -5,6 +5,18 @@ import SiteHeader from "./site-header";
 export const metadata: Metadata = {
   title: "Ankit Bhati",
   description: "Request resources from Ankit Hiteshbhai Bhati",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  openGraph: {
+    title: "Ankit Bhati",
+    description: "Request resources from Ankit Hiteshbhai Bhati",
+    images: [{ url: "/LSS-smp.png" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Ankit Bhati",
+    description: "Request resources from Ankit Hiteshbhai Bhati",
+    images: ["/LSS-smp.png"],
+  },
 };
 
 export default function RootLayout({

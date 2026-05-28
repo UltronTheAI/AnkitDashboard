@@ -140,3 +140,32 @@ export function IconFileDown(props: IconProps) {
   );
 }
 
+export function IconInstagram(props: IconProps) {
+  return (
+    <BaseIcon
+      {...props}
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="4" y="4" width="16" height="16" rx="4" />
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M17 7h.01" />
+    </BaseIcon>
+  );
+}
+
+export function IconBookmark(props: IconProps) {
+  return (
+    <BaseIcon
+      {...props}
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7 4h10a1 1 0 0 1 1 1v17l-6-4-6 4V5a1 1 0 0 1 1-1Z" />
+    </BaseIcon>
+  );
+}

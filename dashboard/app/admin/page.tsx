@@ -88,6 +88,9 @@ export default function AdminPage() {
 
 function ContentAdmin({ token }: { token: string | null }) {
   const [items, setItems] = useState<ContentDoc[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 5;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,12 +104,17 @@ function ContentAdmin({ token }: { token: string | null }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/content", {
+      const res = await fetch(`/api/admin/content?page=${page}&pageSize=${pageSize}`, {
         headers: token ? { authorization: `Bearer ${token}` } : undefined,
       });
-      const data = (await res.json()) as { items?: ContentDoc[]; error?: string };
+      const data = (await res.json()) as {
+        items?: ContentDoc[];
+        total?: number;
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error ?? "Failed to load content.");
       setItems(data.items ?? []);
+      setTotal(typeof data.total === "number" ? data.total : 0);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load content.");
     } finally {
@@ -117,7 +125,7 @@ function ContentAdmin({ token }: { token: string | null }) {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, page]);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -275,13 +283,27 @@ function ContentAdmin({ token }: { token: string | null }) {
       <div className="grid gap-4 rounded-2xl border border-black/5 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-black/40">
         <div className="flex items-center justify-between">
           <div className="text-sm font-medium">All content</div>
-          <button
-            type="button"
-            onClick={refresh}
-            className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-medium text-zinc-900 hover:bg-black/5 dark:border-white/15 dark:bg-black/30 dark:text-zinc-100 dark:hover:bg-white/10"
-          >
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-medium text-zinc-900 hover:bg-black/5 disabled:opacity-50 dark:border-white/15 dark:bg-black/30 dark:text-zinc-100 dark:hover:bg-white/10"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page * pageSize >= total}
+              className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-medium text-zinc-900 hover:bg-black/5 disabled:opacity-50 dark:border-white/15 dark:bg-black/30 dark:text-zinc-100 dark:hover:bg-white/10"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+        <div className="text-xs text-zinc-500">
+          Page {page} • Showing {items.length} of {total}
         </div>
         {loading ? (
           <div className="text-sm text-zinc-500">Loading…</div>
@@ -461,6 +483,9 @@ function ContentRow({
 
 function FormsAdmin() {
   const [items, setItems] = useState<FormDoc[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 5;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -470,12 +495,17 @@ function FormsAdmin() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/forms", {
+      const res = await fetch(`/api/admin/forms?page=${page}&pageSize=${pageSize}`, {
         headers: token ? { authorization: `Bearer ${token}` } : undefined,
       });
-      const data = (await res.json()) as { items?: FormDoc[]; error?: string };
+      const data = (await res.json()) as {
+        items?: FormDoc[];
+        total?: number;
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error ?? "Failed to load forms.");
       setItems(data.items ?? []);
+      setTotal(typeof data.total === "number" ? data.total : 0);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load forms.");
     } finally {
@@ -486,7 +516,7 @@ function FormsAdmin() {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [page]);
 
   async function remove(id: string) {
     if (!confirm("Delete this submission?")) return;
@@ -540,12 +570,24 @@ function FormsAdmin() {
           </button>
           <button
             type="button"
-            onClick={refresh}
-            className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-medium text-zinc-900 hover:bg-black/5 dark:border-white/15 dark:bg-black/30 dark:text-zinc-100 dark:hover:bg-white/10"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-medium text-zinc-900 hover:bg-black/5 disabled:opacity-50 dark:border-white/15 dark:bg-black/30 dark:text-zinc-100 dark:hover:bg-white/10"
           >
-            Refresh
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page * pageSize >= total}
+            className="h-10 rounded-xl border border-black/10 bg-white px-4 text-sm font-medium text-zinc-900 hover:bg-black/5 disabled:opacity-50 dark:border-white/15 dark:bg-black/30 dark:text-zinc-100 dark:hover:bg-white/10"
+          >
+            Next
           </button>
         </div>
+      </div>
+      <div className="text-xs text-zinc-500">
+        Page {page} • Showing {items.length} of {total}
       </div>
 
       {error ? (

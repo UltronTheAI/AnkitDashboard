@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { IconBookmark, IconInstagram } from "./ui/icons";
 
 export default function SiteHeader() {
   return (
@@ -8,21 +9,25 @@ export default function SiteHeader() {
           <Link href="/" className="font-semibold tracking-tight">
             Ankit Bhati
           </Link>
+        </div>
+        <div className="flex items-center gap-2">
           <a
             href="https://www.instagram.com/aurankittt__/"
             target="_blank"
             rel="noreferrer"
-            className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            aria-label="Instagram"
+            title="Instagram"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/60 text-zinc-700 hover:bg-white hover:text-zinc-900 dark:border-white/15 dark:bg-black/30 dark:text-zinc-300 dark:hover:bg-black/50 dark:hover:text-white"
           >
-            Instagram
+            <IconInstagram className="h-5 w-5" />
           </a>
-        </div>
-        <div className="flex items-center gap-3">
           <Link
             href="/saved-info"
-            className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            aria-label="Saved info"
+            title="Saved info"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/60 text-zinc-700 hover:bg-white hover:text-zinc-900 dark:border-white/15 dark:bg-black/30 dark:text-zinc-300 dark:hover:bg-black/50 dark:hover:text-white"
           >
-            Saved info
+            <IconBookmark className="h-5 w-5" />
           </Link>
         </div>
       </div>
