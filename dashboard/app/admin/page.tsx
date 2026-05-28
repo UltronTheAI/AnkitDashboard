@@ -48,7 +48,7 @@ export default function AdminPage() {
               Manage content and form submissions.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
             <button
               type="button"
               onClick={() => setTab("content")}
@@ -281,7 +281,7 @@ function ContentAdmin({ token }: { token: string | null }) {
       </form>
 
       <div className="grid gap-4 rounded-2xl border border-black/5 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-black/40">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm font-medium">All content</div>
           <div className="flex items-center gap-2">
             <button
@@ -370,7 +370,7 @@ function ContentRow({
               />
             ) : null}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
             <button
               type="button"
               onClick={() => setEditing(true)}
@@ -555,9 +555,9 @@ function FormsAdmin() {
 
   return (
     <div className="grid gap-4 rounded-2xl border border-black/5 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-black/40">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm font-medium">Form submissions</div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={downloadCsv}
@@ -596,50 +596,100 @@ function FormsAdmin() {
         </div>
       ) : null}
 
-      {loading ? (
-        <div className="text-sm text-zinc-500">Loading…</div>
-      ) : items.length ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs text-zinc-500">
-              <tr>
-                <th className="py-2 pr-4">Date</th>
-                <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Email</th>
-                <th className="py-2 pr-4">Phone</th>
-                <th className="py-2 pr-4">Resource</th>
-                <th className="py-2 pr-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((it) => (
-                <tr key={it.id} className="border-t border-black/5 dark:border-white/10">
-                  <td className="py-2 pr-4 text-xs text-zinc-500">
-                    {new Date(it.createdAt).toLocaleString()}
-                  </td>
-                  <td className="py-2 pr-4">
-                    {it.firstName} {it.lastName}
-                  </td>
-                  <td className="py-2 pr-4">{it.email}</td>
-                  <td className="py-2 pr-4">{it.phone}</td>
-                  <td className="py-2 pr-4">{it.contentName}</td>
-                  <td className="py-2 pr-4">
-                    <button
-                      type="button"
-                      onClick={() => remove(it.id)}
-                      className="h-8 rounded-lg border border-red-500/30 bg-red-500/10 px-3 text-xs text-red-700 hover:bg-red-500/15 dark:text-red-300"
-                    >
-                      Delete
-                    </button>
-                  </td>
+      {loading ? <div className="text-sm text-zinc-500">Loading…</div> : null}
+
+      {!loading && items.length ? (
+        <>
+          <div className="grid gap-3 md:hidden">
+            {items.map((it) => (
+              <div
+                key={it.id}
+                className="rounded-xl border border-black/10 bg-white/60 p-4 dark:border-white/15 dark:bg-black/30"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold">
+                      {it.firstName} {it.lastName}
+                    </div>
+                    <div className="mt-1 text-xs text-zinc-500">
+                      {new Date(it.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => remove(it.id)}
+                    className="h-9 shrink-0 rounded-lg border border-red-500/30 bg-red-500/10 px-3 text-xs font-medium text-red-700 hover:bg-red-500/15 dark:text-red-300"
+                  >
+                    Delete
+                  </button>
+                </div>
+                <div className="mt-3 grid gap-2 text-sm">
+                  <div className="truncate">
+                    <span className="text-xs text-zinc-500">Email:</span>{" "}
+                    <span className="text-zinc-900 dark:text-zinc-100">{it.email}</span>
+                  </div>
+                  <div className="truncate">
+                    <span className="text-xs text-zinc-500">Phone:</span>{" "}
+                    <span className="text-zinc-900 dark:text-zinc-100">{it.phone}</span>
+                  </div>
+                  <div className="truncate">
+                    <span className="text-xs text-zinc-500">Resource:</span>{" "}
+                    <span className="text-zinc-900 dark:text-zinc-100">
+                      {it.contentName}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs text-zinc-500">
+                <tr>
+                  <th className="py-2 pr-4">Date</th>
+                  <th className="py-2 pr-4">Name</th>
+                  <th className="py-2 pr-4">Email</th>
+                  <th className="py-2 pr-4">Phone</th>
+                  <th className="py-2 pr-4">Resource</th>
+                  <th className="py-2 pr-4">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
+              </thead>
+              <tbody>
+                {items.map((it) => (
+                  <tr
+                    key={it.id}
+                    className="border-t border-black/5 dark:border-white/10"
+                  >
+                    <td className="py-2 pr-4 text-xs text-zinc-500">
+                      {new Date(it.createdAt).toLocaleString()}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {it.firstName} {it.lastName}
+                    </td>
+                    <td className="py-2 pr-4">{it.email}</td>
+                    <td className="py-2 pr-4">{it.phone}</td>
+                    <td className="py-2 pr-4">{it.contentName}</td>
+                    <td className="py-2 pr-4">
+                      <button
+                        type="button"
+                        onClick={() => remove(it.id)}
+                        className="h-8 rounded-lg border border-red-500/30 bg-red-500/10 px-3 text-xs text-red-700 hover:bg-red-500/15 dark:text-red-300"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : null}
+
+      {!loading && !items.length ? (
         <div className="text-sm text-zinc-500">No submissions yet.</div>
-      )}
+      ) : null}
     </div>
   );
 }
