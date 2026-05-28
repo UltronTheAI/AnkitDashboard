@@ -14,7 +14,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Database unavailable." }, { status: 503 });
   }
   const items = await content
-    .find({}, { projection: { name: 1, description: 1, link: 1, imageUrl: 1, createdAt: 1, updatedAt: 1 } })
+    .find(
+      {},
+      {
+        projection: {
+          name: 1,
+          description: 1,
+          link: 1,
+          imageUrl: 1,
+          imagePublicId: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+    )
     .sort({ createdAt: -1 })
     .toArray();
 
@@ -25,6 +38,7 @@ export async function GET(req: NextRequest) {
       description: d.description,
       link: d.link,
       imageUrl: d.imageUrl,
+      imagePublicId: d.imagePublicId,
       createdAt: d.createdAt?.toISOString?.() ?? new Date().toISOString(),
       updatedAt: d.updatedAt?.toISOString?.() ?? new Date().toISOString(),
     })),
@@ -41,12 +55,14 @@ export async function POST(req: NextRequest) {
     description?: string;
     link?: string;
     imageUrl?: string;
+    imagePublicId?: string;
   };
 
   const name = (body.name ?? "").trim();
   const description = (body.description ?? "").trim();
   const link = (body.link ?? "").trim();
   const imageUrl = (body.imageUrl ?? "").trim();
+  const imagePublicId = (body.imagePublicId ?? "").trim();
 
   if (!name || !description || !link) {
     return NextResponse.json(
@@ -67,6 +83,7 @@ export async function POST(req: NextRequest) {
     description,
     link,
     imageUrl: imageUrl || undefined,
+    imagePublicId: imagePublicId || undefined,
     createdAt: now,
     updatedAt: now,
   });

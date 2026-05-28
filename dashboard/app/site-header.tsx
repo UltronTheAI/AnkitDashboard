@@ -1,47 +1,4 @@
-"use client";
-/* eslint-disable react-hooks/set-state-in-effect */
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { IconMoon, IconSun } from "./ui/icons";
-
-function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const current = document.documentElement.dataset.theme;
-    if (current === "dark" || current === "light") setTheme(current);
-  }, []);
-
-  function set(next: "light" | "dark") {
-    setTheme(next);
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem("theme", next);
-    } catch {}
-  }
-
-  return (
-    <button
-      type="button"
-      className="inline-flex items-center gap-2 rounded-full border border-black/15 bg-white px-3 py-1.5 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100 dark:hover:bg-black/60"
-      onClick={() => set(theme === "dark" ? "light" : "dark")}
-      aria-label="Toggle theme"
-    >
-      {theme === "dark" ? (
-        <>
-          <IconSun className="h-4 w-4" />
-          Light
-        </>
-      ) : (
-        <>
-          <IconMoon className="h-4 w-4" />
-          Dark
-        </>
-      )}
-    </button>
-  );
-}
 
 export default function SiteHeader() {
   return (
@@ -67,7 +24,6 @@ export default function SiteHeader() {
           >
             Saved info
           </Link>
-          <ThemeToggle />
         </div>
       </div>
     </header>

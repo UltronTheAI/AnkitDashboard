@@ -10,6 +10,7 @@ type ContentDoc = {
   description: string;
   link: string;
   imageUrl?: string;
+  imagePublicId?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -93,7 +94,8 @@ function ContentAdmin({ token }: { token: string | null }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [link, setLink] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [creating, setCreating] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -121,6 +123,31 @@ function ContentAdmin({ token }: { token: string | null }) {
     e.preventDefault();
     setError(null);
     try {
+      setCreating(true);
+
+      let imageUrl: string | undefined;
+      let imagePublicId: string | undefined;
+      if (imageFile) {
+        const fd = new FormData();
+        fd.append("file", imageFile);
+        const up = await fetch("/api/admin/uploads", {
+          method: "POST",
+          headers: token ? { authorization: `Bearer ${token}` } : undefined,
+          body: fd,
+        });
+        const upData = (await up.json()) as {
+          ok?: boolean;
+          error?: string;
+          url?: string;
+          publicId?: string;
+        };
+        if (!up.ok || !upData.ok || !upData.url || !upData.publicId) {
+          throw new Error(upData.error ?? "Image upload failed.");
+        }
+        imageUrl = upData.url;
+        imagePublicId = upData.publicId;
+      }
+
       const res = await fetch("/api/admin/content", {
         method: "POST",
         headers: {
@@ -131,7 +158,8 @@ function ContentAdmin({ token }: { token: string | null }) {
           name,
           description,
           link,
-          imageUrl: imageUrl || undefined,
+          imageUrl,
+          imagePublicId,
         }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
@@ -139,10 +167,12 @@ function ContentAdmin({ token }: { token: string | null }) {
       setName("");
       setDescription("");
       setLink("");
-      setImageUrl("");
+      setImageFile(null);
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Create failed.");
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -218,20 +248,22 @@ function ContentAdmin({ token }: { token: string | null }) {
           </label>
           <label className="grid gap-1 text-sm md:col-span-2">
             <span className="text-zinc-700 dark:text-zinc-300">
-              Preview image URL (optional)
+              Preview image (optional)
             </span>
             <input
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="h-11 rounded-xl border border-black/10 bg-white px-3 text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+              className="block w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-zinc-800 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100 dark:file:bg-white dark:file:text-zinc-900 dark:hover:file:bg-zinc-200"
             />
           </label>
         </div>
         <button
           type="submit"
+          disabled={creating}
           className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
-          Add
+          {creating ? "Adding…" : "Add"}
         </button>
         {error ? (
           <div className="rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
@@ -259,6 +291,7 @@ function ContentAdmin({ token }: { token: string | null }) {
               <ContentRow
                 key={it.id}
                 item={it}
+                token={token}
                 onDelete={() => remove(it.id)}
                 onUpdate={(patch) => update(it.id, patch)}
               />
@@ -274,10 +307,12 @@ function ContentAdmin({ token }: { token: string | null }) {
 
 function ContentRow({
   item,
+  token,
   onDelete,
   onUpdate,
 }: {
   item: ContentDoc;
+  token: string | null;
   onDelete: () => void;
   onUpdate: (patch: Partial<ContentDoc>) => void;
 }) {
@@ -285,13 +320,13 @@ function ContentRow({
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description);
   const [link, setLink] = useState(item.link);
-  const [imageUrl, setImageUrl] = useState(item.imageUrl ?? "");
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   useEffect(() => {
     setName(item.name);
     setDescription(item.description);
     setLink(item.link);
-    setImageUrl(item.imageUrl ?? "");
+    setImageFile(null);
   }, [item]);
 
   return (
@@ -304,6 +339,14 @@ function ContentRow({
               {item.description}
             </div>
             <div className="mt-2 truncate text-xs text-zinc-500">{item.link}</div>
+            {item.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                alt="Preview"
+                src={item.imageUrl}
+                className="mt-3 h-16 w-16 rounded-lg border border-black/10 object-cover dark:border-white/15"
+              />
+            ) : null}
           </div>
           <div className="flex gap-2">
             <button
@@ -351,24 +394,50 @@ function ContentRow({
             </label>
             <label className="grid gap-1 text-sm md:col-span-2">
               <span className="text-zinc-700 dark:text-zinc-300">
-                Preview image URL (optional)
+                Replace preview image (optional)
               </span>
               <input
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="h-10 rounded-xl border border-black/10 bg-white px-3 text-sm outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                className="block w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-zinc-900 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-zinc-800 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100 dark:file:bg-white dark:file:text-zinc-900 dark:hover:file:bg-zinc-200"
               />
             </label>
           </div>
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
+                let nextUrl: string | undefined = item.imageUrl;
+                let nextPublicId: string | undefined = item.imagePublicId;
+                if (imageFile) {
+                  const fd = new FormData();
+                  fd.append("file", imageFile);
+                  const up = await fetch("/api/admin/uploads", {
+                    method: "POST",
+                    headers: token ? { authorization: `Bearer ${token}` } : undefined,
+                    body: fd,
+                  });
+                  const upData = (await up.json()) as {
+                    ok?: boolean;
+                    error?: string;
+                    url?: string;
+                    publicId?: string;
+                  };
+                  if (!up.ok || !upData.ok || !upData.url || !upData.publicId) {
+                    alert(upData.error ?? "Image upload failed.");
+                    return;
+                  }
+                  nextUrl = upData.url;
+                  nextPublicId = upData.publicId;
+                }
+
                 onUpdate({
                   name,
                   description,
                   link,
-                  imageUrl: imageUrl || undefined,
+                  imageUrl: nextUrl,
+                  imagePublicId: nextPublicId,
                 });
                 setEditing(false);
               }}

@@ -4,14 +4,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { IconMail, IconPhone, IconSearch, IconUser } from "./ui/icons";
-import { COUNTRIES, type Country } from "./ui/countries";
 
 type SavedInfo = {
   firstName: string;
   lastName: string;
   phone: string;
-  countryCode?: string;
-  countryName?: string;
   email: string;
 };
 
@@ -45,8 +42,6 @@ function readSavedInfo(): SavedInfo | null {
       firstName: parsed.firstName,
       lastName: parsed.lastName,
       phone: parsed.phone,
-      countryCode: typeof parsed.countryCode === "string" ? parsed.countryCode : undefined,
-      countryName: typeof parsed.countryName === "string" ? parsed.countryName : undefined,
       email: parsed.email,
     };
   } catch {
@@ -89,9 +84,7 @@ export default function Home() {
   const [savedInfo, setSavedInfo] = useState<SavedInfo | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [country, setCountry] = useState<Country>(COUNTRIES[0]);
-  const [countryQuery, setCountryQuery] = useState("");
-  const [phoneLocal, setPhoneLocal] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
   const [query, setQuery] = useState("");
@@ -114,13 +107,8 @@ export default function Home() {
     if (info) {
       setFirstName(info.firstName);
       setLastName(info.lastName);
-      setPhoneLocal(info.phone);
+      setPhone(info.phone);
       setEmail(info.email);
-      const match =
-        info.countryCode && info.countryName
-          ? COUNTRIES.find((c) => c.code === info.countryCode) ?? null
-          : null;
-      if (match) setCountry(match);
     }
 
     const timestamps = loadRecentRequestTimestamps();
@@ -195,15 +183,6 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery]);
 
-  const filteredCountries = useMemo(() => {
-    const q = countryQuery.trim().toLowerCase();
-    if (!q) return COUNTRIES;
-    return COUNTRIES.filter((c) => {
-      const hay = `${c.name} ${c.dial} ${c.code}`.toLowerCase();
-      return hay.includes(q);
-    });
-  }, [countryQuery]);
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setStatus(null);
@@ -222,7 +201,6 @@ export default function Home() {
 
     setSubmitting(true);
     try {
-      const phone = `${country.dial} ${phoneLocal}`.trim();
       const res = await fetch("/api/forms/submit", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -268,7 +246,7 @@ export default function Home() {
       <section className="rounded-2xl border border-black/5 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-black/40">
         <h1 className="text-2xl font-semibold tracking-tight">Request a resource</h1>
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-          Fill the form, pick exactly one resource, and you’ll receive it by email.
+          This site is for requesting resources from Ankit. Fill the form, pick exactly one resource, and you’ll receive it by email. Daily limit: {REQUEST_LIMIT} requests per 24 hours.
           {savedInfo ? (
             <>
               {" "}
@@ -289,6 +267,17 @@ export default function Home() {
             </>
           )}
         </p>
+        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+          Follow Ankit on Instagram:{" "}
+          <a
+            href="https://www.instagram.com/aurankittt__/"
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-4"
+          >
+            @aurankittt__
+          </a>
+        </p>
       </section>
 
       <form
@@ -305,7 +294,7 @@ export default function Home() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 disabled={disableFields}
-                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100 dark:focus:bg-black/40"
               />
             </div>
           </label>
@@ -318,49 +307,22 @@ export default function Home() {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 disabled={disableFields}
-                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100 dark:focus:bg-black/40"
               />
             </div>
           </label>
           <label className="grid gap-1 text-sm">
             <span className="text-zinc-700 dark:text-zinc-300">Number</span>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="relative">
-                <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-                <input
-                  value={countryQuery}
-                  onChange={(e) => setCountryQuery(e.target.value)}
-                  disabled={disableFields}
-                  placeholder="Search country…"
-                  className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
-                />
-              </div>
-              <select
-                value={country.code}
-                onChange={(e) => {
-                  const next = COUNTRIES.find((c) => c.code === e.target.value);
-                  if (next) setCountry(next);
-                }}
-                disabled={disableFields}
-                className="h-11 w-full rounded-xl border border-black/15 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
-              >
-                {filteredCountries.map((c) => (
-                  <option key={`${c.code}-${c.dial}`} value={c.code}>
-                    {c.name} ({c.dial})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="relative mt-2">
+            <div className="relative">
               <IconPhone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
               <input
                 required
                 inputMode="tel"
-                value={phoneLocal}
-                onChange={(e) => setPhoneLocal(e.target.value)}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 disabled={disableFields}
-                placeholder={`${country.dial} 9876543210`}
-                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+                placeholder="9876543210"
+                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100 dark:focus:bg-black/40"
               />
             </div>
           </label>
@@ -374,7 +336,7 @@ export default function Home() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={disableFields}
-                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+                className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-zinc-900 outline-none ring-0 focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100 dark:focus:bg-black/40"
               />
             </div>
           </label>
@@ -395,7 +357,7 @@ export default function Home() {
               onChange={(e) => setQuery(e.target.value)}
               disabled={disableFields}
               placeholder="Search resources by name or description…"
-              className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 dark:border-white/15 dark:bg-black/40 dark:text-zinc-100"
+              className="h-11 w-full rounded-xl border border-black/15 bg-white pl-10 pr-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:bg-white dark:border-white/15 dark:bg-black/40 dark:text-zinc-100 dark:focus:bg-black/40"
             />
           </div>
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getCollections } from "@/lib/collections";
 import { assertAdmin } from "@/lib/adminAuth";
+import { getCloudinary } from "@/lib/cloudinary";
 
 export async function PUT(
   req: NextRequest,
@@ -24,6 +25,7 @@ export async function PUT(
     description?: string;
     link?: string;
     imageUrl?: string;
+    imagePublicId?: string;
   };
 
   const patch: Record<string, unknown> = {};
@@ -31,6 +33,8 @@ export async function PUT(
   if (typeof body.description === "string") patch.description = body.description.trim();
   if (typeof body.link === "string") patch.link = body.link.trim();
   if (typeof body.imageUrl === "string") patch.imageUrl = body.imageUrl.trim() || undefined;
+  if (typeof body.imagePublicId === "string")
+    patch.imagePublicId = body.imagePublicId.trim() || undefined;
   patch.updatedAt = new Date();
 
   let content;
@@ -39,7 +43,25 @@ export async function PUT(
   } catch {
     return NextResponse.json({ ok: false, error: "Database unavailable." }, { status: 503 });
   }
+
+  const existing = await content.findOne(
+    { _id: oid },
+    { projection: { imagePublicId: 1 } },
+  );
+
   await content.updateOne({ _id: oid }, { $set: patch });
+
+  const oldPublicId = existing?.imagePublicId;
+  const newPublicId =
+    typeof patch.imagePublicId === "string"
+      ? (patch.imagePublicId as string)
+      : undefined;
+  if (oldPublicId && oldPublicId !== newPublicId) {
+    try {
+      const cloud = getCloudinary();
+      await cloud.uploader.destroy(oldPublicId);
+    } catch {}
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -65,6 +87,19 @@ export async function DELETE(
   } catch {
     return NextResponse.json({ ok: false, error: "Database unavailable." }, { status: 503 });
   }
+
+  const existing = await content.findOne(
+    { _id: oid },
+    { projection: { imagePublicId: 1 } },
+  );
   await content.deleteOne({ _id: oid });
+
+  const publicId = existing?.imagePublicId;
+  if (publicId) {
+    try {
+      const cloud = getCloudinary();
+      await cloud.uploader.destroy(publicId);
+    } catch {}
+  }
   return NextResponse.json({ ok: true });
 }

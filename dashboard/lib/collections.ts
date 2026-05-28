@@ -7,6 +7,7 @@ export type ContentDoc = {
   description: string;
   link: string;
   imageUrl?: string;
+  imagePublicId?: string;
   createdAt: Date;
   updatedAt: Date;
 };
